@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gravar Firmware ESP via Navegador</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@9.2.0/dist/web/install-button.js?module"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #111;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    h1 {
+      color: #00c8ff;
+      margin-bottom: 20px;
+    }
+
+    select, input[type=file], button {
+      margin: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+
+    select, input[type=file] {
+      background: #222;
+      color: #fff;
+    }
+
+    button {
+      background: #00c8ff;
+      color: #000;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #00a0cc;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #0f0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 Gravador Web ESP</h1>
+
+  <label for="chipSelect">Escolha o chip:</label><br>
+  <select id="chipSelect">
+    <option value="ESP8266">ESP8266</option>
+    <option value="ESP32">ESP32</option>
+  </select><br>
+
+  <label for="firmwareFile">Escolha o firmware (.bin):</label><br>
+  <input type="file" id="firmwareFile" accept=".bin"><br>
+
+  <button id="flashButton">Gravar Firmware</button>
+
+  <div id="status"></div>
+
+  <script type="module">
+    import { ESPLoader } from "https://unpkg.com/esp-web-tools@9.2.0/dist/web/esp-loader.js?module";
+
+    const flashButton = document.getElementById('flashButton');
+    const firmwareInput = document.getElementById('firmwareFile');
+    const chipSelect = document.getElementById('chipSelect');
+    const statusDiv = document.getElementById('status');
+
+    async function flashFirmware() {
+      const chipFamily = chipSelect.value;
+      const file = firmwareInput.files[0];
+
+      if (!file) {
+        alert('Selecione um arquivo .bin primeiro!');
+        return;
+      }
+
+      statusDiv.textContent = "Conectando ao dispositivo...";
+
+      try {
+        // Solicita acesso ao dispositivo serial
+        const port = await navigator.serial.requestPort({});
+        await port.open({ baudRate: 115200 });
+
+        const loader = new ESPLoader(port, { log: (msg) => console.log(msg) });
+        await loader.initialize();
+        statusDiv.textContent = `Conectado ao ${chipFamily}, apagando flash...`;
+
+        // Lê o arquivo binário selecionado
+        const firmwareData = new Uint8Array(await file.arrayBuffer());
+
+        // Apaga e grava
+        await loader.flashData(firmwareData, 0, (percent) => {
+          statusDiv.textContent = `Gravando... ${percent.toFixed(1)}%`;
+        });
+
+        statusDiv.textContent = "✅ Gravação concluída com sucesso!";
+        await loader.hardReset();
+        await port.close();
+
+      } catch (err) {
+        console.error(err);
+        statusDiv.textContent = "❌ Erro: " + err.message;
+      }
+    }
+
+    flashButton.addEventListener('click', flashFirmware);
+  </script>
+</body>
+</html>

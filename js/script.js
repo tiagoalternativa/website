@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initBaudRate();
     loadAllSettings();
     updateTheme();
-    writeLogLine("ESP Web Flasher loaded.");
+    writeLogLine("Aguardando conectar...");
 });
 
 function initBaudRate() {
@@ -220,16 +220,16 @@ async function clickNoReset() {
  */
 async function clickErase() {
     if (
-        window.confirm("This will erase the entire flash. Click OK to continue.")
+        window.confirm("Isto apagará toda a memoria flash. Clique em OK para continuar...")
     ) {
         baudRate.disabled = true;
         butErase.disabled = true;
         butProgram.disabled = true;
         try {
-            writeLogLine("Erasing flash memory. Please wait...");
+            writeLogLine("Apagando a memoria flash. Aguarde...");
             let stamp = Date.now();
             await esploader.eraseFlash();
-            writeLogLine("Finished. Took " + (Date.now() - stamp) + "ms to erase.");
+            writeLogLine("Finalizado. Tempo de " + (Date.now() - stamp) + "ms para apagar.");
         } catch (e) {
             errorMsg(e);
         } finally {
@@ -309,7 +309,7 @@ async function clickProgram() {
         butProgram.disabled = getValidFiles().length == 0;
     }
 
-    writeLogLine("To run the new firmware, please reset your device.");
+    writeLogLine("Para rodar seu novo firmware, pro favor reset seu dispositivo.");
 }
 
 function getValidFiles() {

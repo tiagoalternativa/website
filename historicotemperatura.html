@@ -1,0 +1,61 @@
+<!doctype html>
+<head>
+<meta charset="UTF-8">
+<title> Aquecimento Solar </title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<body onLoad="width"540" height="345"">
+</head>
+
+<body>
+<script>
+        
+function temponline(btn)
+{
+var teste = document.getElementById("txtInput").value;
+
+document.getElementById('myIframe').src = 'https://thingspeak.com/channels/858900/charts/1?width=21&height=500&days=10&dynamic=true&title=Temperatura+Aquecimento+Solar&type=line&xaxis=Horas&results=' +teste;
+
+document.getElementById("myIframe").style.height = "500px";
+document.getElementById("myIframe").style.width = "1250px";
+
+}
+
+function historico(btn)
+{
+var diafim = document.getElementById("diafim").value ;
+var mesfim = document.getElementById("mesfim").value;
+var anofim = document.getElementById("anofim").value;
+
+var diaini = document.getElementById("diaini").value;
+var mesini = document.getElementById("mesini").value;
+var anoini = document.getElementById("anoini").value;
+
+document.getElementById('myIframe').src = 'http://api.thingspeak.com/channels/858900/charts/1?timescale=10&width=21&height=600&title=Temperatura+Aquecimento+Solar&type=line&xaxis=Horas&start='+anoini+'-'+mesini+'-'+diaini+'%2003:00:00&end='+anofim+'-'+mesfim+'-'+diafim+'%2003:10:00';
+
+document.getElementById("myIframe").style.height = "700px";
+document.getElementById("myIframe").style.width = "1250px";
+
+}
+
+</script> 
+
+<p><label for="name">Pontos: </label><input type="text" id="txtInput" /> <button id="myBtn" onclick="temponline(this);" >Gr&#225;fico Online</button></p>
+
+
+<p> <label for="name">Data In&#237;cio </label><label for="name">Dia:</label><input type="text" id="diaini" /> 
+<label for="name">M&#234;s:</label><input type="text" id="mesini" /> 
+<label for="name">Ano:</label><input type="text" id="anoini" /> </p>
+
+<p> <label for="name">Data final&nbsp;&nbsp;&nbsp;</label><label for="name">Dia:</label><input type="text" id="diafim" /> 
+<label for="name">M&#234;s:</label><input type="text" id="mesfim" /> 
+<label for="name">Ano:</label><input type="text" id="anofim" /> <button id="myBtn" onclick="historico(this);" >Gerar Hist&#243;rico</button></p>
+
+<iframe id="myIframe" height="500" width="600" frameborder="0" src=""></iframe>
+
+</body>
+</html>
+
+
+
+
+

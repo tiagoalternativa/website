@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<table width="800" cellspacing="4" cellpadding="8" border="0" bgcolor="#5958d1" align="center">
+<tr> 
+   <td><font color="#FFFFFF" face="arial, verdana, helvetica" > 
+<b ><center>Calculadora de massa de ve&iacute;culo</center></b> 
+   </font></td> 
+</tr>
+<tr> 
+   <td bgcolor="#ffffcc"> 
+   <font face="arial, verdana, helvetica" > 
+
+
+
+
+   <head>
+<script type="text/javascript">
+function  calcular() {
+  var alta = eval(document.form.a.value)
+  var alt = eval(document.form.b.value)
+  var altc = eval(document.form.c.value)
+  var altd = eval(document.form.d.value)
+  var alte = eval(document.form.e.value)
+  var altf = eval(document.form.f.value)
+  var altg = eval(document.form.g.value)
+  var alth = eval(document.form.h.value)
+
+  var alt2 = alt / 100
+    var MASSA = ( (((alta * 0.070307)* 9.7833 * alte)/9.7833) + (((alt  * 0.070307)* 9.7833 * altf)/9.7833) + (((altc * 0.070307)* 9.7833 * altg)/9.7833) + (((altd * 0.070307)* 9.7833 * alth)/9.7833) )    
+
+  document.form.massacarro.value=custRound(MASSA,1);
+if (document.form.massacarro.value <800.0)
+document.form.comment.value = "Peso Baixo";
+if (document.form.massacarro.value >=800.0 && document.form.massacarro.value <=1500.0)
+document.form.comment.value = "Peso normal";
+if (document.form.massacarro.value >=1500 && document.form.massacarro.value <=3000)
+document.form.comment.value = "Alto do Peso";
+
+}
+function custRound(x,places) {
+  return (x*1)
+}
+// End -->
+</script>
+</head>
+<body>
+<div align="center">
+<form  name="form" id="form">
+Press&atilde;o pneu 1 (em PSI)
+<br>
+<input type="Text" name="a" size="15"> 
+<br>
+Press&atilde;o pneu 2 (em PSI)
+<br>
+<input type="Text" name="b" size="15"> 
+<br>
+Press&atilde;o pneu 3 (em PSI)
+<br>
+<input type="Text" name="c" size="15"> 
+<br>
+Press&atilde;o pneu 4 (em PSI)
+<br>
+<input type="Text" name="d" size="15"> 
+<br>
+&Aacute;rea de contato do pneu 1(em cm&sup2;)
+<br>
+<input type="Text" name="e" size="15"> 
+<br>
+&Aacute;rea de contato do pneu 2(em cm&sup2;)
+<br>
+<input type="Text" name="f" size="15"> 
+<br>
+&Aacute;rea de contato do pneu 3(em cm&sup2;)
+<br>
+<input type="Text" name="g" size="15"> 
+<br>
+&Aacute;rea de contato do pneu 4(em cm&sup2;)
+<br>
+<input type="Text" name="h" size="15"> 
+<br>
+<br>
+<input type="button" style="Padding: 8pt" value="Calcular" onclick="calcular()" name="button">
+<input type="reset" style="Padding: 8pt" value="Limpar Valores">
+<br>
+<br>
+Massa do ve&iacute;culo em Kg
+<br>
+<input type="Text" name="massacarro" id="massacarro" size="15"> 
+<br>
+Avalia&ccedil;&atilde;o
+<br> 
+<input type="Text" name="comment" id="comment" size="15">
+<br>
+<br>
+<center>
+<span style="font-size: x-small;"><a  href= "https://www.google.com.br" target=”_blank”>Tiago Jos&eacute; Costa Pereira</a></span></center>
+<center>
+<span style="font-size: x-small;"><a  href="" target=?_blank?></a></span></center>
+</form>
+</div>
+</body>
+
+
+   </font> 
+  </td> 
+</tr>
+</table>
+
+
+
+</html>

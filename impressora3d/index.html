@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Controle Ender 3</title>
+    <style>
+        /* (Mantenho o mesmo CSS do seu original, ligeira limpeza) */
+        * { box-sizing: border-box; margin:0; padding:0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background:#f5f5f5; color:#333; padding:20px; line-height:1.6; }
+        .container { max-width:1200px; margin:0 auto; background:white; border-radius:10px; box-shadow:0 0 20px rgba(0,0,0,0.1); overflow:hidden; }
+        header { background:#2c3e50; color:white; padding:20px; display:flex; align-items:center; justify-content:space-between; }
+        .logo h1 { font-size:1.8rem; }
+        .status { display:flex; align-items:center; }
+        .status-indicator { width:12px; height:12px; border-radius:50%; background:#e74c3c; margin-right:8px; transition:background 0.2s; }
+        .status.connected .status-indicator { background:#2ecc71; }
+        main { display:grid; grid-template-columns:1fr 2fr; gap:20px; padding:20px; }
+        @media (max-width:768px) { main { grid-template-columns:1fr; } }
+        .controls, .connection-panel, .print-monitor { background:#f8f9fa; border-radius:8px; padding:20px; }
+        .controls h2, .serial-output h2, .print-monitor h2 { margin-bottom:15px; color:#2c3e50; border-bottom:1px solid #ddd; padding-bottom:10px; }
+        .button-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+        @media (max-width:480px) { .button-grid { grid-template-columns:1fr; } }
+        button { background:#3498db; color:white; border:none; border-radius:5px; padding:12px 15px; cursor:pointer; font-size:1rem; transition:background-color .3s; }
+        button:hover { background:#2980b9; }
+        button:disabled { background:#95a5a6; cursor:not-allowed; }
+        .temp-btn { background:#e74c3c } .move-btn { background:#2ecc71 } .extrude-btn { background:#9b59b6 } .home-btn { background:#f39c12 } .sound-btn{ background:#1abc9c }
+        .serial-output { background:#2c3e50; color:#ecf0f1; border-radius:8px; padding:20px; display:flex; flex-direction:column; }
+        #term_window { background:#1a252f; color:#ecf0f1; border:none; border-radius:5px; padding:15px; flex-grow:1; font-family: 'Courier New', monospace; resize:none; overflow-y:auto; min-height:200px; margin-bottom:15px; }
+        .auto-responses { display:grid; gap:10px; margin-top:15px; }
+        .response-box { background:#1a252f; border-radius:5px; padding:10px; font-family:'Courier New', monospace; font-size:.9rem; }
+        .response-box h3 { color:#ecf0f1; margin-bottom:5px; font-size:.9rem; }
+        .response-content { min-height:40px; color:#2ecc71; overflow-y:auto; max-height:80px; }
+        .input-area { display:flex; margin-top:15px; }
+        #term_input { flex-grow:1; padding:10px; border:1px solid #34495e; border-radius:5px 0 0 5px; font-family:'Courier New', monospace; }
+        #send { border-radius:0 5px 5px 0; background:#3498db; }
+        .connection-panel { display:flex; flex-wrap:wrap; gap:15px; align-items:center; }
+        .baud-selector { display:flex; align-items:center; gap:10px; }
+        select { padding:8px 12px; border:1px solid #ddd; border-radius:5px; }
+        footer { text-align:center; padding:15px; color:#7f8c8d; font-size:.9rem; border-top:1px solid #eee; }
+        .auto-update { display:flex; align-items:center; gap:10px; margin-top:15px; }
+        .monitor-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+        @media (max-width:768px) { .monitor-grid { grid-template-columns:1fr; } }
+        .monitor-box { background:white; border-radius:5px; padding:15px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+        .monitor-value { font-size:1.2rem; font-weight:bold; color:#3498db; min-height:30px; }
+        .progress-info { margin-top:10px; font-size:.9rem; color:#7f8c8d; }
+        .reset-btn { background:#e74c3c; margin-top:10px; padding:8px 12px; font-size:.9rem; }
+        .reset-btn:hover { background:#c0392b; }
+		#btnDownloadDriver {transition: all 0.3s ease;}
+        #btnDownloadDriver:hover {background: #1e40af;transform: scale(1.05);}
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo"><h1>Controle Impressora Ender 3</h1></div>
+			<div <button> <button id="openclose_port">Conectar</button></div>
+            <div class="status" id="status"><div class="status-indicator"></div><span id="port_info">Desconectado</span></div>
+        </header>
+
+        <main>
+            <section class="controls">
+                <h2>Comandos R&aacute;pidos</h2>
+                <div class="button-grid">
+                    <button class="temp-btn" data-command="M140 S60">Ligar Mesa (M140 S60 > 60&#176;C</button>
+					<button class="command-btn" data-command="M104 S0">Desligar Bico (M104 S0 > 0&#176;C)</button>
+					<button class="temp-btn" data-command="M104 S200">Ligar Bico (M104 S200 > 200&#176;C)</button>
+					<button class="command-btn" data-command="M106 S255">Ligar Ventoinha (M106 S255)</button>
+					<button class="command-btn" data-command="M107">Desligar Ventoinha (M107)</button>
+					<button class="command-btn" data-command="M18">Desabilitar Motores (M18)</button>
+					<button class="move-btn" data-command="G0 X10 Y10 Z10">Movimentar (G0 X10 Y10 Z10)</button>
+					<button class="extrude-btn" data-command="G1 E10 F100">Extrusor (G1 E10(Comp.) F100(Velc.))</button>
+					<button class="home-btn" data-command="G28">Posi&ccedil;&otilde;es Iniciais (G28)</button>
+					<button class="move-btn" data-command="M24">Continuar Impress&atilde;o (M24)</button>
+					<button class="command-btn" data-command="M25">Pausar Impress&atilde;o (M25)</button>
+					<button class="command-btn" data-command="M0">Parar Impress&atilde;o (M0)</button>
+					<button class="command-btn" data-command="M117">Enviar mensagem (M117)</button>
+					<button class="command-btn" data-command="M21">Inicializa cart&atilde;o (M21)</button>
+					<button class="command-btn" data-command="M31">Tempo de impress&atilde;o (M31)</button>
+					<button class="sound-btn" data-command="M300">Buzina (M300)</button>
+                </div>
+
+                <div class="auto-update">
+                    <span>Atualiza&ccedil;&atilde;o autom&aacute;tica a cada 1 minuto:</span>
+                    <span id="countdown">01:00</span>
+                </div>
+            </section>
+
+            <section class="serial-output">
+                <h2>Sa&iacute;da Serial</h2>
+                <textarea id="term_window" readonly></textarea>
+
+                <div class="auto-responses">
+                    <div class="response-box">
+                        <h3>Resposta de Temperatura (M105):</h3>
+                        <div id="response_m105" class="response-content"></div>
+                    </div>
+                    <div class="response-box">
+                        <h3>Resposta de Posi&ccedil;&atilde;o X (M114):</h3>
+                        <div id="response_m114" class="response-content"></div>
+                    </div>
+                    <div class="response-box">
+                        <h3>Resposta de Progresso de Impress&atilde;o (M27):</h3>
+                        <div id="response_m27" class="response-content"></div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <input type="text" id="term_input" placeholder="Digite um comando..." disabled />
+                    <button id="send" disabled>Enviar</button>
+                </div>
+            </section>
+        </main>
+
+        <section class="print-monitor">
+            <h2>Monitor de Impress&atilde;o</h2>
+            <div class="monitor-grid">
+                <div class="monitor-box">
+                    <h3>In&iacute;cio da Impress&atilde;o</h3>
+                    <div id="print_start" class="monitor-value">--:--:--</div>
+                    <div class="progress-info">Condi&ccedil;&atilde;o: Temperatura > 100&#176;C e X > 20mm</div>
+                    <button id="reset_start" class="reset-btn">Reiniciar</button>
+                </div>
+                <div class="monitor-box">
+                    <h3>Previs&atilde;o de T&eacute;rmino</h3>
+                    <div id="print_end" class="monitor-value">--:--:--</div>
+                    <div id="progress_info" class="progress-info">Aguardando dados de progresso...</div>
+                    <button id="reset_end" class="reset-btn">Reiniciar</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="connection-panel">
+            <div class="baud-selector">
+                <span>Baud Rate:</span>
+                <select id="baud_rate">
+                    <option value="9600">9600</option>
+                    <option value="19200">19200</option>
+                    <option value="38400">38400</option>
+                    <option value="57600">57600</option>
+                    <option value="115200" selected>115200</option>
+                </select>
+                <button id="change" disabled>Alterar</button>
+            </div>
+            <button id="clear" disabled>Limpar Terminal</button>
+        
+              <button id="btnDownloadDriver" class="btn" style="background:#2563eb" onclick="downloadCH340()">Baixar Driver Ender3</button>
+</div>
+
+        <footer><h6><p>Interface de controle para impressora Ender 3 via Web Serial API @Tiago.Alternativa</p><h6></footer>
+    </div>
+
+    <script>
+    // ---------- Variáveis globais ----------
+    let port = null;
+    let portOpen = false;
+    let reader = null;
+    let readLoopActive = false;
+    let autoUpdateInterval = null;
+    let countdownInterval = null;
+    let countdownTime = 60; // 1 minutos em segundos
+    let lastCommand = '';
+    let awaitingResponse = false;
+    let holdPort = null; // usado ao trocar baud
+
+    // Monitor de impressão
+    let printStartTime = null;
+    let printProgressData = { 5: null, 20: null, 60: null, 80: null };
+    let currentProgress = 0;
+    let printStarted = false;
+
+    // --- ADICIONADAS: variáveis para controle pedido ---
+    let ultimaTemperatura = null;
+    let ultimaPosicaoX = null;
+    // ---------------------------------------------------
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    // ---------- Inicialização ----------
+    window.addEventListener('load', () => {
+        if (!('serial' in navigator)) {
+            alert("Esta API Web Serial n&atilde;o &eacute; suportada neste navegador ou  est&aacute; desatualizado. Use Google Chrome ou Microsoft Edge.");
+            return;
+        }
+
+        document.getElementById("openclose_port").addEventListener("click", openClose);
+        document.getElementById("change").addEventListener("click", changeSettings);
+        document.getElementById("clear").addEventListener("click", clearTerminal);
+        document.getElementById("send").addEventListener("click", sendString);
+        document.getElementById("term_input").addEventListener("keydown", detectEnter);
+        document.getElementById("reset_start").addEventListener("click", resetPrintStart);
+        document.getElementById("reset_end").addEventListener("click", resetPrintEnd);
+
+        document.querySelectorAll('.command-btn, .temp-btn, .move-btn, .extrude-btn, .home-btn, .sound-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                if (!portOpen) { alert("Conecte-se a impressora primeiro!"); return; }
+                sendCommand(this.getAttribute('data-command'));
+            });
+        });
+
+        clearTerminal();
+        updateCountdownDisplay();
+
+        // prefill via URL?  ex: ?prefill=G28
+        const params = new URLSearchParams(window.location.search);
+        const preFill = params.get('prefill');
+        if (preFill) document.getElementById("term_input").value = preFill;
+    });
+
+    // ---------- Abrir / Fechar porta ----------
+    async function openClose() {
+        if (portOpen) {
+            // fechar
+            await closePort();
+            return;
+        }
+
+        try {
+            if (!holdPort) {
+                // pede seleção ao usuário
+                port = await navigator.serial.requestPort();
+            } else {
+                // reutiliza porta segura passada por changeSettings
+                port = holdPort;
+                holdPort = null;
+            }
+
+            const baudSelected = parseInt(document.getElementById("baud_rate").value, 10) || 115200;
+            await port.open({ baudRate: baudSelected });
+
+            // iniciar leitura - pipe para TextDecoderStream primeiro
+            const textDecoder = new TextDecoderStream();
+            const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+
+            portOpen = true;
+            document.getElementById("openclose_port").innerText = "Desconectar";
+            document.getElementById("term_input").disabled = false;
+            document.getElementById("send").disabled = false;
+            document.getElementById("clear").disabled = false;
+            document.getElementById("change").disabled = false;
+            document.getElementById("status").classList.add("connected");
+            document.getElementById("port_info").innerText = "Conectado via USB";
+
+            // inicia readLoop e auto-update
+            readLoopActive = true;
+            readLoop().catch(err => {
+                console.error("readLoop erro:", err);
+            });
+
+            startAutoUpdate();
+        } catch (err) {
+            console.error("Erro ao abrir porta:", err);
+            alert("Erro ao abrir porta serial: " + (err.message || err));
+            await safeCleanupAfterError();
+        }
+    }
+
+    // Fecha a porta de forma limpa
+    async function closePort() {
+        try {
+            // para atualização automática
+            stopAutoUpdate();
+
+            if (reader) {
+                try { await reader.cancel(); } catch (e) { /* ignore */ }
+            }
+
+            // espera o readLoop finalizar
+            readLoopActive = false;
+
+            // tenta fechar port
+            if (port && port.readable) {
+                try { await port.readable.cancel(); } catch (e) {}
+            }
+
+            if (port && port.close) {
+                try { await port.close(); } catch (e) { console.warn("Erro fechando porta:", e); }
+            }
+        } catch (err) {
+            console.warn("Erro no closePort:", err);
+        } finally {
+            // limpa estado UI
+            reader = null;
+            portOpen = false;
+            port = null;
+            document.getElementById("openclose_port").innerText = "Conectar";
+            document.getElementById("term_input").disabled = true;
+            document.getElementById("send").disabled = true;
+            document.getElementById("change").disabled = true;
+            document.getElementById("status").classList.remove("connected");
+            document.getElementById("port_info").innerText = "Desconectado";
+            console.log("Porta fechada");
+        }
+    }
+
+    // Em caso de erro ao abrir, faz cleanup parcial
+    async function safeCleanupAfterError() {
+        try {
+            if (reader) { try { await reader.cancel(); } catch(e){} reader = null; }
+            if (port && port.readable) { try { await port.readable.cancel(); } catch(e){} }
+            if (port && port.close) { try { await port.close(); } catch(e){} }
+        } catch(e){}
+        portOpen = false;
+        port = null;
+        stopAutoUpdate();
+        document.getElementById("openclose_port").innerText = "Conectar";
+        document.getElementById("term_input").disabled = true;
+        document.getElementById("send").disabled = true;
+        document.getElementById("change").disabled = true;
+        document.getElementById("status").classList.remove("connected");
+        document.getElementById("port_info").innerText = "Desconectado";
+    }
+
+    // ---------- Loop de leitura ----------
+    async function readLoop() {
+        try {
+            while (readLoopActive && reader) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                if (value !== undefined && value !== null) {
+                    // value já é string por TextDecoderStream
+                    handleSerialChunk(value);
+                }
+            }
+        } catch (err) {
+            if (readLoopActive) console.error("Erro no readLoop:", err);
+        } finally {
+            readLoopActive = false;
+            // Ao fim da leitura, fechar porta se ainda aberta
+            if (port && port.readable) {
+                try { await port.readable.cancel(); } catch(e) {}
+            }
+            if (port && port.close) {
+                try { await port.close(); } catch(e) {}
+            }
+            portOpen = false;
+            document.getElementById("openclose_port").innerText = "Conectar";
+            document.getElementById("term_input").disabled = true;
+            document.getElementById("send").disabled = true;
+            document.getElementById("change").disabled = true;
+            document.getElementById("status").classList.remove("connected");
+            document.getElementById("port_info").innerText = "Desconectado";
+            stopAutoUpdate();
+        }
+    }
+
+    // Manipula o texto recebido do serial
+    function handleSerialChunk(text) {
+        // escreve no terminal
+        const ta = document.getElementById("term_window");
+        ta.value += text;
+        ta.scrollTop = ta.scrollHeight;
+
+        console.log("RECEBEU:", text);
+
+        // Repassa processamento (pode receber pedaços; dependendo da firmware, combine linhas se necessário)
+        processResponse(text);
+
+        // Checa condições para início impressão (temperature + position handled by extract funcs)
+        checkPrintStartConditions();
+    }
+
+    // ---------- Envio de comandos ----------
+    async function sendCommand(command) {
+        if (!portOpen || !port || !port.writable) {
+            console.warn("Porta não disponível para envio");
+            return;
+        }
+        try {
+            lastCommand = command;
+            awaitingResponse = true;
+
+            const writer = port.writable.getWriter();
+            await writer.write(encoder.encode(command + "\n"));
+            writer.releaseLock();
+
+            const ta = document.getElementById("term_window");
+            ta.value += `\n> ${command}\n`;
+            ta.scrollTop = ta.scrollHeight;
+        } catch (err) {
+            console.error("Erro ao enviar comando:", err);
+        } finally {
+            // garantir que awaitingResponse fique true até alguma resposta ser parseada
+        }
+    }
+
+    // Envia string do input
+    async function sendString() {
+        const input = document.getElementById("term_input").value.trim();
+        if (!input) return;
+        document.getElementById("term_input").value = "";
+        await sendCommand(input);
+    }
+
+    // ---------- Comandos automáticos (M105, M114, M27) ----------
+    function startAutoUpdate() {
+        // limpa caso exista
+        stopAutoUpdate();
+
+        // primeira execução imediata
+        sendAutoCommands().catch(e => console.warn(e));
+
+        autoUpdateInterval = setInterval(() => {
+            sendAutoCommands().catch(e => console.warn(e));
+        }, 60000); // 60s
+
+        // contagem regressiva
+        countdownTime = 60;
+        updateCountdownDisplay();
+        countdownInterval = setInterval(() => {
+            countdownTime--;
+            if (countdownTime <= 0) countdownTime = 180;
+            updateCountdownDisplay();
+        }, 1000);
+    }
+
+    function stopAutoUpdate() {
+        if (autoUpdateInterval) { clearInterval(autoUpdateInterval); autoUpdateInterval = null; }
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        countdownTime = 60;
+        updateCountdownDisplay();
+    }
+
+    async function sendAutoCommands() {
+        if (!portOpen) return;
+
+        // limpa respostas prévias
+        document.getElementById('response_m105').textContent = '';
+        document.getElementById('response_m114').textContent = '';
+        document.getElementById('response_m27').textContent = '';
+
+        const ta = document.getElementById("term_window");
+        ta.value += "\n--- Atualizacao automatica ---\n";
+        ta.scrollTop = ta.scrollHeight;
+
+        // envia com pequenos delays para não conflitar respostas
+        await sendCommand("M105");
+        await delay(400);
+        await sendCommand("M114");
+        await delay(400);
+        await sendCommand("M27");
+
+        // reset contador
+        countdownTime = 60;
+        updateCountdownDisplay();
+    }
+
+    // ---------- Processamento de respostas ----------
+    function processResponse(value) {
+        
+        if (/T:\d+(\.\d+)?/.test(value) || lastCommand === 'M105') {
+            awaitingResponse = false;
+            extractTemperature(value);
+        }
+
+        if (/X:-?\d+(\.\d+)?/.test(value) || lastCommand === 'M114') {
+            awaitingResponse = false;
+            extractPosition(value);
+        }
+
+        if (/SD printing byte \d+\/\d+/i.test(value) || lastCommand === 'M27') {
+            document.getElementById('response_m27').textContent += value;
+            awaitingResponse = false;
+            extractProgress(value);
+        }
+    }
+
+    // Extrai temperatura (M105) ok T:25.4 /200.0 B:60.0 /60.0
+    function extractTemperature(response) {
+        
+        const tempMatch = response.match(/T: *(-?\d+\.?\d*)/);
+        if (tempMatch && tempMatch[1]) {
+            const temperature = parseFloat(tempMatch[1]);
+            console.log("Temperatura:", temperature);
+            document.getElementById('response_m105').textContent = temperature.toString();
+            // Armazena última temperatura
+            ultimaTemperatura = temperature;
+           
+            if (temperature > 100 && !printStarted) {
+                // pede posição logo após detectar temperatura alta (mantendo comportamento anterior)
+                setTimeout(() => { sendCommand("M114"); }, 500);
+            }
+        }
+    }
+
+    // Extrai posição X (M114) X:100.00 Y:200.00 Z:50.00 E:0.00
+    function extractPosition(response) {
+        const xMatch = response.match(/X: *(-?\d+\.?\d*)/);
+        if (xMatch && xMatch[1]) {
+            const xPosition = parseFloat(xMatch[1]);
+            console.log("X:", xPosition);
+
+            // --- Aapresenta somente o valor após X: no campo response_m114 ---
+            document.getElementById('response_m114').textContent = xPosition.toString();
+            // Armazena última posição X
+            ultimaPosicaoX = xPosition;
+            
+            if (!printStarted && (ultimaTemperatura !== null) && (ultimaPosicaoX !== null) && ultimaTemperatura > 100 && ultimaPosicaoX > 20) {
+                startPrintTimer();
+            }
+        }
+    }
+
+    // Extrai progresso (M27) SD printing byte 500/1000
+    function extractProgress(response) {
+        const progressMatch = response.match(/SD printing byte (\d+)\/(\d+)/i);
+        if (progressMatch && progressMatch[1] && progressMatch[2]) {
+            const currentBytes = parseInt(progressMatch[1], 10);
+            const totalBytes = parseInt(progressMatch[2], 10);
+            if (totalBytes > 0) {
+                currentProgress = (currentBytes / totalBytes) * 100;
+                document.getElementById('progress_info').textContent = `Progresso: ${currentProgress.toFixed(1)}%`;
+                recordProgressTime(currentProgress);
+                calculatePrintEndTime();
+            }
+        } else {
+            
+            const altMatch = response.match(/printing byte[: ]* *(\d+)\/(\d+)/i);
+            if (altMatch) {
+                const cur = parseInt(altMatch[1],10);
+                const tot = parseInt(altMatch[2],10);
+                if (tot>0) {
+                    currentProgress = (cur / tot) * 100;
+                    document.getElementById('progress_info').textContent = `Progresso: ${currentProgress.toFixed(1)}%`;
+                    recordProgressTime(currentProgress);
+                    calculatePrintEndTime();
+                }
+            }
+        }
+    }
+
+    // ---------- Monitor de impressão ----------
+    function startPrintTimer() {
+        if (!printStartTime) {
+            printStartTime = new Date();
+            printStarted = true;
+            const startTimeStr = printStartTime.toLocaleTimeString();
+            document.getElementById('print_start').textContent = startTimeStr;
+            document.getElementById("term_window").value += `\n>>> IMPRESSÃO INICIADA: ${startTimeStr} <<<\n`;
+            document.getElementById("term_window").scrollTop = document.getElementById("term_window").scrollHeight;
+            console.log("Impressão iniciada:", startTimeStr);
+        }
+    }
+
+    function recordProgressTime(progress) {
+        const progressMilestones = [5,20,60,80];
+        for (const milestone of progressMilestones) {
+            if (progress >= milestone && !printProgressData[milestone]) {
+                printProgressData[milestone] = new Date();
+                console.log(`Marco ${milestone}% registrado em`, printProgressData[milestone]);
+                document.getElementById('progress_info').textContent = `Progresso: ${progress.toFixed(1)}% | Marco ${milestone}% registrado`;
+            }
+        }
+    }
+
+    function calculatePrintEndTime() {
+        if (!printStartTime) return;
+        if (!printProgressData[5] && currentProgress <= 5) return;
+        // preferir maior marco disponível (80>60>20>5)
+        const milestones = [80,60,20,5];
+        for (const m of milestones) {
+            if (printProgressData[m] && currentProgress > m) {
+                const timeToM = (printProgressData[m] - printStartTime) / 1000; // seg
+                const estimatedTotalTime = (timeToM * 100) / m; // segundos
+                const estimatedEndTime = new Date(printStartTime.getTime() + estimatedTotalTime * 1000);
+                document.getElementById('print_end').textContent = estimatedEndTime.toLocaleTimeString();
+                document.getElementById('progress_info').textContent = `Progresso: ${currentProgress.toFixed(1)}% | Previsao baseada em ${m}%`;
+                break;
+            }
+        }
+    }
+
+    function checkPrintStartConditions() {
+        
+    }
+
+    function resetPrintStart() {
+        printStartTime = null;
+        printStarted = false;
+        document.getElementById('print_start').textContent = '--:--:--';
+        console.log("Monitor de início reiniciado");
+    }
+
+    function resetPrintEnd() {
+        printProgressData = {5:null,20:null,60:null,80:null};
+        currentProgress = 0;
+        document.getElementById('print_end').textContent = '--:--:--';
+        document.getElementById('progress_info').textContent = 'Aguardando dados de progresso...';
+        console.log("Monitor de previsao reiniciado");
+    }
+
+    // ---------- Utilitários ----------
+    function delay(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+    function updateCountdownDisplay() {
+        const minutes = Math.floor(countdownTime/60).toString().padStart(2,'0');
+        const seconds = (countdownTime%60).toString().padStart(2,'0');
+        document.getElementById("countdown").textContent = `${minutes}:${seconds}`;
+    }
+
+    // limpa terminal e respostas
+    function clearTerminal() {
+        document.getElementById("term_window").value = "";
+        document.getElementById('response_m105').textContent = '';
+        document.getElementById('response_m114').textContent = '';
+        document.getElementById('response_m27').textContent = '';
+    }
+
+    function detectEnter(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            sendString();
+        }
+    }
+
+    // Quando usuário altera baud rate: fecha e reabre com mesma porta (holdPort)
+    async function changeSettings() {
+        if (!portOpen || !port) return;
+        // segura a porta para reutilizar sem pedir ao usuário selecionar novamente
+        holdPort = port;
+        // fecha porta atual e reabre com novo baud via openClose()
+        await closePort();
+        // openClose vai detectar holdPort e reutilizar
+        await openClose();
+    }
+
+    // ---------- Fechar tudo ao sair da página ----------
+    window.addEventListener('beforeunload', async (e) => {
+        try {
+            if (reader) { try { await reader.cancel(); } catch(e){} }
+            if (port && port.readable) { try { await port.readable.cancel(); } catch(e){} }
+            if (port && port.close) { try { await port.close(); } catch(e){} }
+        } catch(e){}
+    });
+
+	function downloadCH340() {
+    const link = document.createElement("a");
+    link.href = "https://cdn.sparkfun.com/assets/learn_tutorials/8/4/4/CH341SER.EXE";
+    link.target = "_blank";
+    link.click();
+}
+
+    </script>
+</body>
+</html>
